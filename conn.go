@@ -152,6 +152,11 @@ func isData(frameType int) bool {
 	return frameType == TextMessage || frameType == BinaryMessage
 }
 
+// True if we return this frame "inline" to the user of the API.
+func isInline(frameType int) bool {
+	return frameType == PingMessage || frameType == PongMessage || frameType == TextMessage || frameType == BinaryMessage
+}
+
 func maskBytes(key [4]byte, pos int, b []byte) int {
 	for i := range b {
 		b[i] ^= key[pos&3]
@@ -657,7 +662,7 @@ func (c *Conn) advanceFrame() (int, error) {
 
 	// 5. For text and binary messages, enforce read limit and return.
 
-	if frameType == continuationFrame || frameType == TextMessage || frameType == BinaryMessage {
+	if frameType == continuationFrame || isInline(frameType) {
 
 		c.readLength += c.readRemaining
 		if c.readLimit > 0 && c.readLength > c.readLimit {
@@ -732,7 +737,7 @@ func (c *Conn) NextReader() (messageType int, r io.Reader, err error) {
 			c.readErr = hideTempErr(err)
 			break
 		}
-		if frameType == TextMessage || frameType == BinaryMessage {
+		if isInline(frameType) {
 			return frameType, messageReader{c, c.readSeq}, nil
 		}
 	}
